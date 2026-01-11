@@ -62,12 +62,31 @@ class CloudUserBot:
         else:
             self.client = TelegramClient(StringSession(), api_id, api_hash)
         
-        # Default keywords
-        self.keywords = [
-            "يسوي", "يحل", "يساعدني", "ابي شخص", "تعرفون حد", 
-            "ابي حد", "محتاج", "اريد", "اطلب", "ممكن حد",
-            "ابغى", "ودي", "عايز", "بدي", "اريد واحد", "محتاج واحد"
+        # Keywords file path
+        self.keywords_file = "keywords.json"
+        
+        # Default keywords (will be overridden by file or environment if available)
+        self.default_keywords = [
+            "تعروفون احد يسوي", "تعرفون احد يحل", "تعرفون احد يطلع",
+            "تعرفون حد يسوي", "تعرفون حد يساعندي", "تعرفون حد يحل",
+            "تعرفون شخص يسوي", "تعرفون شخص يحل", "تعرفون شخص يطلع",
+            "تعرفون ناس يسون", "تعرفون ناس تحل", "تعرفون ناس يحلون",
+            "تعرفون ناس تطلع اعذار", "تعرفون ناس تطلع سكليف",
+            "تعرفون ناس يطلعون اعذار", "تعرفون ناس يطلعون سكليف",
+            "ابي احد يحل", "ابي احد يسوي", "ابي احد يساعدني",
+            "ابي احد يطلع", "ابي احد يلخص", "ابي مساعده", "ابي مساعدة",
+            "ابي احد يصمم", "عندكم احد يحل", "عندكم احد يسوي", "عندكم احد يطلع",
+            "ابغى احد يحل", "ابغى احد يسوي", "ابغى احد يطلع", "ابغى احد يساعدني",
+            "احد يحل واجب", "احد يسوي واجب", "احد يطلع سكليف", "احد يطلع اعذار",
+            "ابغا احد يحل", "ابغا احد يسوي", "ابغا احد يطلع",
+            "سكليف", "يحل كويز", "من يحل واجب", "من يسوي لي واجب",
+            "من يسوي سكليف", "من يسوي تلخيص", "من يسوي بروزنتيشن",
+            "من يسوي بوربوينت", "من يسوي تصميم", "من وين اجيب سكليف",
+            "كيف اجيب سكليف", "كيف اخذ سكليف", "كيف اجيب عذر", "ابغى عذر"
         ]
+        
+        # Initialize keywords (will be loaded from file or environment, or use defaults)
+        self.keywords = []
         
         # Try to create/find a private channel for notifications
         self.notification_channel = None
@@ -135,16 +154,32 @@ class CloudUserBot:
             await asyncio.sleep(1)
 
     def load_cloud_config(self):
-        """Load configuration from environment variables"""
+        """Load configuration from file or environment variables"""
         try:
-            # Load keywords from environment
+            # Try to load keywords from file first
+            if os.path.exists(self.keywords_file):
+                try:
+                    with open(self.keywords_file, 'r', encoding='utf-8') as f:
+                        data = json.load(f)
+                        self.keywords = data.get('keywords', [])
+                        logger.info(f"Loaded {len(self.keywords)} keywords from file")
+                        return
+                except Exception as e:
+                    logger.warning(f"Failed to load keywords from file: {e}")
+            
+            # Fallback: Load keywords from environment
             keywords_env = os.getenv('KEYWORDS')
             if keywords_env:
-                self.keywords = [k.strip() for k in keywords_env.split(',')]
+                self.keywords = [k.strip() for k in keywords_env.split(',') if k.strip()]
+                logger.info(f"Loaded {len(self.keywords)} keywords from environment")
+            else:
+                # No keywords in environment - use default keywords
+                self.keywords = self.default_keywords.copy()
+                logger.info(f"Using {len(self.keywords)} default keywords")
                 
-            logger.info(f"Loaded {len(self.keywords)} keywords from config")
         except Exception as e:
             logger.error(f"Error loading cloud config: {e}")
+            self.keywords = self.default_keywords.copy()
 
     async def start_bot(self):
         """Start the user bot with enhanced reconnection"""
@@ -709,11 +744,15 @@ class CloudUserBot:
             await self.client.send_message('me', f"❌ **خطأ في تنفيذ الأمر:** {str(e)}")
 
     async def save_keywords(self):
-        """Save keywords to environment or file"""
+        """Save keywords to a JSON file for persistence"""
         try:
-            # For now, just log the change
-            logger.info(f"Keywords updated: {self.keywords}")
-            # In a real deployment, you might want to save to a database or file
+            data = {
+                'keywords': self.keywords,
+                'last_updated': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            }
+            with open(self.keywords_file, 'w', encoding='utf-8') as f:
+                json.dump(data, f, ensure_ascii=False, indent=2)
+            logger.info(f"Keywords saved to file: {len(self.keywords)} keywords")
         except Exception as e:
             logger.error(f"Error saving keywords: {e}")
 

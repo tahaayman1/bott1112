@@ -23,11 +23,57 @@ class SaudiBot:
     def __init__(self, token: str, owner_id: int):
         self.token = token
         self.owner_id = owner_id
-        self.keywords = [
-            "يسوي", "يحل", "يساعدني", "ابي شخص", "تعرفون حد", 
-            "ابي حد", "محتاج", "اريد", "اطلب", "ممكن حد"
+        self.keywords_file = "keywords.json"
+        self.default_keywords = [
+            "تعروفون احد يسوي", "تعرفون احد يحل", "تعرفون احد يطلع",
+            "تعرفون حد يسوي", "تعرفون حد يساعندي", "تعرفون حد يحل",
+            "تعرفون شخص يسوي", "تعرفون شخص يحل", "تعرفون شخص يطلع",
+            "تعرفون ناس يسون", "تعرفون ناس تحل", "تعرفون ناس يحلون",
+            "تعرفون ناس تطلع اعذار", "تعرفون ناس تطلع سكليف",
+            "تعرفون ناس يطلعون اعذار", "تعرفون ناس يطلعون سكليف",
+            "ابي احد يحل", "ابي احد يسوي", "ابي احد يساعدني",
+            "ابي احد يطلع", "ابي احد يلخص", "ابي مساعده", "ابي مساعدة",
+            "ابي احد يصمم", "عندكم احد يحل", "عندكم احد يسوي", "عندكم احد يطلع",
+            "ابغى احد يحل", "ابغى احد يسوي", "ابغى احد يطلع", "ابغى احد يساعدني",
+            "احد يحل واجب", "احد يسوي واجب", "احد يطلع سكليف", "احد يطلع اعذار",
+            "ابغا احد يحل", "ابغا احد يسوي", "ابغا احد يطلع",
+            "سكليف", "يحل كويز", "من يحل واجب", "من يسوي لي واجب",
+            "من يسوي سكليف", "من يسوي تلخيص", "من يسوي بروزنتيشن",
+            "من يسوي بوربوينت", "من يسوي تصميم", "من وين اجيب سكليف",
+            "كيف اجيب سكليف", "كيف اخذ سكليف", "كيف اجيب عذر", "ابغى عذر"
         ]
+        self.keywords = []
+        self.load_keywords()
         self.monitored_groups = set()
+    
+    def load_keywords(self):
+        """Load keywords from JSON file"""
+        try:
+            if os.path.exists(self.keywords_file):
+                with open(self.keywords_file, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                    self.keywords = data.get('keywords', [])
+                    logger.info(f"Loaded {len(self.keywords)} keywords from file")
+            else:
+                # No file found - use default keywords
+                self.keywords = self.default_keywords.copy()
+                logger.info(f"Using {len(self.keywords)} default keywords")
+        except Exception as e:
+            logger.error(f"Error loading keywords: {e}")
+            self.keywords = self.default_keywords.copy()
+    
+    def save_keywords(self):
+        """Save keywords to JSON file"""
+        try:
+            data = {
+                'keywords': self.keywords,
+                'last_updated': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            }
+            with open(self.keywords_file, 'w', encoding='utf-8') as f:
+                json.dump(data, f, ensure_ascii=False, indent=2)
+            logger.info(f"Keywords saved: {len(self.keywords)} keywords")
+        except Exception as e:
+            logger.error(f"Error saving keywords: {e}")
         
     async def start(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Handle /start command"""
