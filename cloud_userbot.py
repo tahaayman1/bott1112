@@ -156,29 +156,40 @@ class CloudUserBot:
     def load_cloud_config(self):
         """Load configuration from file or environment variables"""
         try:
+            # Get the directory where this script is located
+            script_dir = os.path.dirname(os.path.abspath(__file__))
+            keywords_path = os.path.join(script_dir, self.keywords_file)
+            
+            logger.info(f"🔍 Looking for keywords file at: {keywords_path}")
+            
             # Try to load keywords from file first
-            if os.path.exists(self.keywords_file):
+            if os.path.exists(keywords_path):
                 try:
-                    with open(self.keywords_file, 'r', encoding='utf-8') as f:
+                    with open(keywords_path, 'r', encoding='utf-8') as f:
                         data = json.load(f)
                         self.keywords = data.get('keywords', [])
-                        logger.info(f"Loaded {len(self.keywords)} keywords from file")
+                        logger.info(f"✅ Loaded {len(self.keywords)} keywords from file")
+                        # Print first 5 keywords as sample
+                        sample = self.keywords[:5] if len(self.keywords) > 5 else self.keywords
+                        logger.info(f"📋 Sample keywords: {sample}")
                         return
                 except Exception as e:
-                    logger.warning(f"Failed to load keywords from file: {e}")
+                    logger.warning(f"❌ Failed to load keywords from file: {e}")
+            else:
+                logger.warning(f"⚠️ Keywords file not found at: {keywords_path}")
             
             # Fallback: Load keywords from environment
             keywords_env = os.getenv('KEYWORDS')
             if keywords_env:
                 self.keywords = [k.strip() for k in keywords_env.split(',') if k.strip()]
-                logger.info(f"Loaded {len(self.keywords)} keywords from environment")
+                logger.info(f"✅ Loaded {len(self.keywords)} keywords from environment")
             else:
                 # No keywords in environment - use default keywords
                 self.keywords = self.default_keywords.copy()
-                logger.info(f"Using {len(self.keywords)} default keywords")
+                logger.info(f"⚠️ Using {len(self.keywords)} default keywords (no file or env found)")
                 
         except Exception as e:
-            logger.error(f"Error loading cloud config: {e}")
+            logger.error(f"❌ Error loading cloud config: {e}")
             self.keywords = self.default_keywords.copy()
 
     async def start_bot(self):
