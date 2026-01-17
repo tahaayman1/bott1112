@@ -264,15 +264,20 @@ class CloudUserBot:
                 return False
             
             # Register event handlers
+            logger.info("📝 Registering event handlers...")
+            
+            # Register for ALL incoming messages (groups, private, channels)
             self.client.add_event_handler(
                 self.handle_new_message, 
                 events.NewMessage(incoming=True)
             )
+            logger.info("✅ Registered incoming message handler")
             
             self.client.add_event_handler(
                 self.handle_command,
                 events.NewMessage(outgoing=True, chats='me')
             )
+            logger.info("✅ Registered command handler")
             
             # Keep the bot running with connection monitoring
             await self.run_with_monitoring()
@@ -772,6 +777,10 @@ class CloudUserBot:
         try:
             message = event.message
             
+            # Debug: Log that we received a message
+            chat_title = getattr(event.chat, 'title', 'Private') if event.chat else 'Unknown'
+            logger.debug(f"📨 Received message in: {chat_title}")
+            
             # Skip if message is from me
             if message.sender_id == self.my_user_id:
                 return
@@ -779,21 +788,29 @@ class CloudUserBot:
             # Skip if no text
             if not message.text:
                 return
+            
+            # Log for debugging - show message text preview
+            text_preview = message.text[:50] + "..." if len(message.text) > 50 else message.text
+            logger.info(f"📩 Message in [{chat_title}]: {text_preview}")
                 
             # Add group to monitored list (simplified)
             group_id = event.chat_id
             if group_id not in self.monitored_groups:
                 self.monitored_groups.add(group_id)
-                chat_name = getattr(event.chat, 'title', 'Unknown Group')
-                logger.info(f"Monitoring new group: {chat_name} (Total: {len(self.monitored_groups)})")
+                logger.info(f"Monitoring new group: {chat_title} (Total: {len(self.monitored_groups)})")
             
             # Quick keyword check
             text_lower = message.text.lower()
             found_keywords = [kw for kw in self.keywords if kw.lower() in text_lower]
             
+            # Log keyword check result
             if found_keywords:
-                logger.info(f"🚨 MATCH! Keywords: {found_keywords} in group: {getattr(event.chat, 'title', 'Unknown')}")
+                logger.info(f"🚨 MATCH! Keywords: {found_keywords} in group: {chat_title}")
                 await self.send_notification(message, event.chat, found_keywords)
+            else:
+                # Only log non-matches occasionally to avoid spam
+                if len(self.monitored_groups) < 10:  # Only during initial monitoring
+                    logger.debug(f"No keyword match in: {chat_title}")
                 
         except Exception as e:
             logger.error(f"Error handling message: {e}")
